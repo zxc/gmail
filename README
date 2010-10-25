@@ -19,6 +19,7 @@
         > conn.labels.switch('sent')
         1567 # Number of emails in that label
         > conn.labels.create('mylabel')
+        > conn.labels.delete('mylabel')
         > conn.labels.exists('foo')
         False
         > len(conn.labels.all())
@@ -29,6 +30,9 @@
         > msgs = conn.unread()
         > msgs 
         [<gmail.Message object...]
+        > msgs[0].subject()
+        'V1agra for Sale! #1 ONLINE PHARMACY!'
+        > msgs = conn.all()
 
     - Send email:
 
@@ -49,4 +53,6 @@
       This creates Message objects that store the message id and a reference
       to your IMAP connection.  When you first try to read anything from them,
       they download.
+
+    - Basically zero error handling is done right now.
 
