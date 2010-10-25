@@ -32,8 +32,9 @@ class Gmail(object):
         self.smtp.starttls()
         self.smtp.login(user=username, password=password)
 
-        # Select the inbox by default
         self.labels = LabelSet(self)
+
+        self.search = Search(self)
 
     # Close connections to Gmail
     def logout(self, close_imap=True, close_smtp=True):
@@ -52,16 +53,11 @@ class Gmail(object):
             raise Exception('No IMAP connection; perhaps you logged out')
         return Message(imap=self.imap, id=id)
 
-    def search(self, *args, **kwargs): pass
-
+    # TODO: remove
     def _search(self, command):
         status, ids = self.imap.search(None, command)
         ids = ids[0].split()
         return [self.fetch(id) for id in ids]
-
-    def all(self): return self._search('ALL')
-    def read(self): return self._search('SEEN')
-    def unread(self): return self._search('UNSEEN')
 
     # Send a gmail.Message object
     # If no from address is specified, your Gmail username is used
@@ -75,6 +71,52 @@ class Gmail(object):
         self.smtp.sendmail(from_addr = message.from_address(),
                            to_addrs  = message.to_address(),
                            msg       = message.message.as_string())
+
+class Search(object):
+    def __init__(self, parent):
+        self.parent = parent
+
+    def unread(self):
+        pass    # 'UNSEEN'
+
+    def read(self):
+        pass    # 'SEEN'
+    
+    def all(self):
+        pass    # 'ALL'
+
+    def to(self, query):
+        pass    # 'TO', '"query"'
+
+    def from_(self, query): # fix name
+        pass    # 'FROM', '"query"'
+
+    def since(self, date):
+        pass    # 'SINCE', '"date"'
+
+    def before(self, date):
+        pass    # 'BEFORE', '"date"'
+
+    def on(self, date):
+        pass    # 'ON', '"date"'
+
+    def subject(self, query):
+        pass    # 'SUBJECT', '"query"'
+
+    def label(self, query):
+        pass    # 'LABEL', '"query"'
+
+    def bcc(self, query):
+        pass    # 'BCC', '"query"'
+
+    def cc(self, query):
+        pass    # 'CC', '"query"'
+
+    def body(self, query):
+        pass    # 'BODY', '"query"'
+
+    def __call__(self, query):
+        pass
 
 class LabelSet(object):
     def __init__(self, parent):
@@ -107,6 +149,9 @@ class LabelSet(object):
 
     def delete(self, label):
         self.parent.imap.delete(label)
+
+    def rename(self, old, new):
+        self.parent.imap.rename(old, new)
 
     def all(self):
         _, ret = self.parent.imap.list()
