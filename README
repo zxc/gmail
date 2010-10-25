@@ -1,0 +1,52 @@
+
+  gmail.py - interact with Gmail through python
+  ---------------------------------------------
+
+- gmail.py wraps imaplib and smtplib to make it easier to interact with
+  your Gmail account through python.
+
+- Examples:
+
+    - Login (this automatically connects to IMAP and SMTP) and then out:
+
+        > import gmail
+        > conn = gmail.Gmail('username', 'password')
+        > # do stuff...
+        > conn.logout()
+
+    - Interact with labels:
+        
+        > conn.labels.switch('sent')
+        1567 # Number of emails in that label
+        > conn.labels.create('mylabel')
+        > conn.labels.exists('foo')
+        False
+        > len(conn.labels.all())
+        25
+
+    - Download email:
+        
+        > msgs = conn.unread()
+        > msgs 
+        [<gmail.Message object...]
+
+    - Send email:
+
+        > msg = gmail.Message().fill('you@gmail.com', 'me@gmail.com',
+        ... 'fwd: fwd: funny', 'pictures of cats')
+        > msg.to_addresses()
+        ['you@gmail.com']
+        > msg.subject()
+        'fwd: fwd: funny'
+        > conn.send(msg)
+
+- Notes:
+
+    - Downloading, searching and fetching email is the roughest part of the 
+      project so far and is liable to change.
+
+    - Messages are not downloaded when you make a call such as 'conn.unread()'.
+      This creates Message objects that store the message id and a reference
+      to your IMAP connection.  When you first try to read anything from them,
+      they download.
+
