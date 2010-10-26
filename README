@@ -61,8 +61,6 @@
 
     - Basically zero error handling is done right now.
 
-    - Better usage examples coming soon.
-
 - API (no return unless indicated):
     
     Gmail.__init__(username, password) 

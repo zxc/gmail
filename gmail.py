@@ -260,7 +260,11 @@ class Message(object):
             self.parent.labels.create(label)
         self.imap.copy(self.id, label)
 
-    # Might add remove_label and move_to functions
+    def move_to(self, label):
+        self.add_label(label)
+        self.delete()
+
+    # Might add remove_label function
     # Have to look into imap.uid()
 
 
