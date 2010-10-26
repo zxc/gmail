@@ -116,9 +116,6 @@ class Search(object):
     def on(self, date):
         pass    # 'ON', '"date"'
 
-    def __call__(self, query):
-        pass
-
 class LabelSet(object):
     def __init__(self, parent):
         self.parent = parent
@@ -177,7 +174,7 @@ class LabelSet(object):
         return self.labels
 
 class Message(object):
-    def __init__(self, parent, imap=None, id=-1):
+    def __init__(self, parent=None, imap=None, id=-1):
         self.parent = parent
         self.imap = imap
         self.id = id
