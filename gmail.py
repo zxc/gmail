@@ -265,8 +265,8 @@ class Message(object):
     def read(self): self.flag('\\Seen')
     def unread(self): self.unflag('\\Seen')
 
-    def star(self): self.flag('[Gmail]/Starred')
-    def unstar(self): self.unflag('[Gmail]/Starred')
+    def star(self): self.add_label('[Gmail]/Starred')
+    def unstar(self): self.unflag('\\Flagged')
 
     def delete(self): self.flag('\\Deleted')
     def archive(self): self.move_to('[Gmail]/All Mail')

@@ -7,4 +7,3 @@
     - imaplib's support of UIDs is lacking
     - See imaplib.uid
 * Figure out why LABEL search doesn't work
-* Figure out why [Gmail]/Starred flag doesn't work
