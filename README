@@ -62,3 +62,120 @@
     - Basically zero error handling is done right now.
 
     - Better usage examples coming soon.
+
+- API (no return unless indicated):
+    
+    Gmail.__init__(username, password) 
+        - Connect and login to Gmail.
+        - The current label is set to the inbox.
+        - Returns a Gmail object.
+
+    Gmail.logout(close_imap=True, close_smtp=True) 
+        - Close connections.
+
+    Gmail.fetch(id)
+        - Return a Message object for a given id.
+
+    Gmail.send(message)
+        - Send a Message object.
+
+    Gmail.search.clear()
+        - Clear the current query.
+
+    Gmail.search.first()
+        - Returns the first Message result for the current query.
+
+    Gmail.search.all()
+        - If a query is in progress, returns a list of result Messages.
+        - Otherwise returns a list of all Messages for the current Label.
+
+    Gmail.search.count()
+        - Returns the number of results for the current query.
+
+    Gmail.search.unread()
+    Gmail.search.read()
+    Gmail.search.to(query)
+    Gmail.search.from_(query)
+    Gmail.search.subject(query)
+    Gmail.search.bcc(query)
+    Gmail.search.cc(query)
+    Gmail.search.body(query)
+    Gmail.search.since(date)
+    Gmail.search.before(date)
+    Gmail.search.on(date)
+        - Builds the current query.
+        - Returns the Search chainable.
+    
+    Gmail.labels.exists(label)
+        - Return True or False if the label exists.
+
+    Gmail.labels.switch(label)
+        - Change the current label.
+        - This clears the current search.
+
+    Gmail.labels.create(label)
+        - Create a label.
+
+    Gmail.labels.delete(label)
+        - Delete a label.
+
+    Gmail.labels.rename(old, new)
+        - Rename a label.
+
+    Gmail.labels.all()
+        - Return a list of current labels.
+
+    Gmail.labels.current
+        - The current label.
+
+    Gmail.labels.count
+        - The number of messages in the current label.
+
+    Message.__init__(options)
+        - Options are used internally.
+        - If you are creating a message to send, don't fill in any options.
+        - Instead, do '> msg = Message().fill(your content)'.
+
+    Message.fill(to_addresses='', from_address='', subject='', body='')
+        - Create a message to send.
+        - Returns itself.
+
+    Message.fetch()
+        - Downloads the content of a message from the server.
+        - Returns itself.
+    
+    Message.from_address(address)
+        - If 'address' is omitted, returns the current from address.
+        - Otherwise sets the from address.
+
+    Message.to_address(address)
+        - If 'address' is omitted, returns the current list of to addresses.
+        - Otherwise sets the to addresses.
+        - 'address' can be a string or list.
+
+    Message.subject(subject)
+        - If 'subject' is omitted, returns the current subject.
+        - Otherwise sets the subject.
+
+    Message.body(body)
+        - If 'body' is omitted, returns the current message body.
+        - Otherwise sets the message body.
+
+    Message.mark_read()
+        - Mark a message as read.
+
+    Message.mark_unread()
+        - Mark a message as unread.
+    
+    Message.delete()
+        - Delete a message from the current label.
+
+    Message.flag(flag)
+        - Typically an internal command, add a flag for a message.
+
+    Message.unflag(flag)
+        - Typically an internal command, remove a flag for a message.
+
+    Message.add_label(label)
+        - Add a label to the message.
+
