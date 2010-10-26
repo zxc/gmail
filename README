@@ -160,10 +160,8 @@
         - Otherwise sets the message body.
 
     Message.read()
-        - Mark a message as read.
-
     Message.unread()
-        - Mark a message as unread.
+        - Mark a message as read/unread.
     
     Message.delete()
         - Delete a message from the current label.
@@ -172,20 +170,15 @@
         - Archive a message.
 
     Message.star()
-        - Star a message.
-        - TODO: Issues with Flag [Gmail]/Starred; look into.
-
     Message.unstar()
-        - Unstar a message.
+        - Star/Unstar a message.
     
     Message.spam()
         - Mark a message as spam.
 
     Message.flag(flag)
-        - Typically an internal command, add a flag for a message.
-
     Message.unflag(flag)
-        - Typically an internal command, remove a flag for a message.
+        - Typically internal commands, add/remove a flag for a message.
 
     Message.add_label(label)
         - Add a label to the message.
