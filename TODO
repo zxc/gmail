@@ -1,0 +1,6 @@
+
+* Test create/remove/rename of Labels
+* Figure how to switch a Message's label(s)
+* Implement Date search queries (SINCE, etc.)
+* Figure out why LABEL search doesn't work
+* Figure out why [Gmail]/Starred flag doesn't work
