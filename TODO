@@ -1,4 +1,7 @@
 
+* Fix how searches are built.
+    - Right now additional searches add to list of ids.
+    - Should instead filter ids.
 * Decide a good way to remove labels from a message
     - Looks to need a UID instead of message number
     - imaplib's support of UIDs is lacking
