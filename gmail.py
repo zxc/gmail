@@ -33,7 +33,6 @@ class Gmail(object):
         self.smtp.login(user=username, password=password)
 
         self.labels = LabelSet(self)
-
         self.search = Search(self)
 
     # Close connections to Gmail
@@ -42,22 +41,13 @@ class Gmail(object):
             self.imap.close()
             self.imap.logout()
             self.imap = None
-
         if close_smtp:
             self.smtp.quit()
             self.smtp = None
 
     def fetch(self, id):
         if type(id) == int: id = str(id)
-        if self.imap is None: 
-            raise Exception('No IMAP connection; perhaps you logged out')
-        return Message(imap=self.imap, id=id)
-
-    # TODO: remove
-    def _search(self, command):
-        status, ids = self.imap.search(None, command)
-        ids = ids[0].split()
-        return [self.fetch(id) for id in ids]
+        return Message(self, imap=self.imap, id=id)
 
     # Send a gmail.Message object
     # If no from address is specified, your Gmail username is used
@@ -75,21 +65,47 @@ class Gmail(object):
 class Search(object):
     def __init__(self, parent):
         self.parent = parent
+        self.messages = []
+        self.ids = []
+        self.modified = False
 
-    def unread(self):
-        pass    # 'UNSEEN'
+    def clear(self):
+        self.messages = []
+        self.ids = []
+        self.modified = False
 
-    def read(self):
-        pass    # 'SEEN'
-    
+    def _execute(self, *args):
+        status, ids = self.parent.imap.search(None, *args)
+        for id in ids[0].split():
+            if id in self.ids: continue
+            self.messages.append(Message(self.parent, imap=self.parent.imap, id=id)
+            self.ids.append(id)
+        self.modified = True
+        return self
+
+    def first(self):
+        if not self.modified: raise Exception('No searches performed yet')
+        if len(self.messages) == 0: return None
+        return self.messages[0]
+
     def all(self):
-        pass    # 'ALL'
+        if not self.modified: self._execute('ALL')
+        return self.messages
 
-    def to(self, query):
-        pass    # 'TO', '"query"'
+    def count(self):
+        return len(self.messages)
 
-    def from_(self, query): # fix name
-        pass    # 'FROM', '"query"'
+    # Clean these up, maybe with __getattr__
+    def unread(self):         return self._execute('UNSEEN')
+    def read(self):           return self._execute('SEEN')
+    def to(self, query):      return self._execute('TO', '"%s"' % query)
+    def from_(self, query):   return self._execute('FROM', '"%s"' % query)
+    def subject(self, query): return self._execute('SUBJECT', '"%s"' % query)
+    def bcc(self, query):     return self._execute('BCC', '"%s"' % query)
+    def cc(self, query):      return self._execute('CC', '"%s"' % query)
+    def body(self, query):    return self._execute('BODY', '"%s"' % query)
+
+    def label(self, query):   return self._execute('LABEL', '"%s"' % query)
 
     def since(self, date):
         pass    # 'SINCE', '"date"'
@@ -100,29 +116,16 @@ class Search(object):
     def on(self, date):
         pass    # 'ON', '"date"'
 
-    def subject(self, query):
-        pass    # 'SUBJECT', '"query"'
-
-    def label(self, query):
-        pass    # 'LABEL', '"query"'
-
-    def bcc(self, query):
-        pass    # 'BCC', '"query"'
-
-    def cc(self, query):
-        pass    # 'CC', '"query"'
-
-    def body(self, query):
-        pass    # 'BODY', '"query"'
-
     def __call__(self, query):
         pass
 
 class LabelSet(object):
     def __init__(self, parent):
         self.parent = parent
-        self.parent.imap.select()
         self.labels = None
+        self.current = 'INBOX'
+        self.count = None
+        self.switch('INBOX')
 
     def exists(self, label):
         if self.labels is None: self.all()
@@ -141,17 +144,27 @@ class LabelSet(object):
             label = shortcuts[label.lower()]
 
         ret = self.parent.imap.select(label)
-        try: return int(ret[1][0])
+        self.current = label
+        try:
+            self.count = int(ret[1][0])
+            return self.count
         except: return None
 
     def create(self, label):
         self.parent.imap.create(label)
+        if self.labels is None: self.all()
+        self.labels.append(label)
 
     def delete(self, label):
         self.parent.imap.delete(label)
+        if self.labels is None: self.all()
+        if label in self.labels: self.labels.remove(label)
 
     def rename(self, old, new):
         self.parent.imap.rename(old, new)
+        if self.labels is None: self.all()
+        if label in self.labels: self.labels.remove(label)
+        self.labels.append(label)
 
     def all(self):
         _, ret = self.parent.imap.list()
@@ -161,7 +174,8 @@ class LabelSet(object):
         return self.labels
 
 class Message(object):
-    def __init__(self, imap=None, id=-1):
+    def __init__(self, parent, imap=None, id=-1):
+        self.parent = parent
         self.imap = imap
         self.id = id
         self._has_content = False
@@ -232,3 +246,11 @@ class Message(object):
         self._body = body
         self.message.set_payload(body)
 
+    def mark_read(self):
+        self.parent.imap.store(self.id, '+FLAGS', '\\Seen')
+
+    def mark_unread(self):
+        self.parent.imap.store(self.id, '-FLAGS', '\\Seen')
+
+    def delete(self):
+        self.parent.imap.store(self.id, '+FLAGS', '\\Deleted')
