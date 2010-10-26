@@ -32,8 +32,8 @@ class Gmail(object):
         self.smtp.starttls()
         self.smtp.login(user=username, password=password)
 
-        self.labels = LabelSet(self)
         self.search = Search(self)
+        self.labels = LabelSet(self)
 
     # Close connections to Gmail
     def logout(self, close_imap=True, close_smtp=True):
@@ -78,7 +78,7 @@ class Search(object):
         status, ids = self.parent.imap.search(None, *args)
         for id in ids[0].split():
             if id in self.ids: continue
-            self.messages.append(Message(self.parent, imap=self.parent.imap, id=id)
+            self.messages.append(Message(self.parent, imap=self.parent.imap, id=id))
             self.ids.append(id)
         self.modified = True
         return self
@@ -145,6 +145,9 @@ class LabelSet(object):
 
         ret = self.parent.imap.select(label)
         self.current = label
+
+        self.parent.search.clear()
+
         try:
             self.count = int(ret[1][0])
             return self.count
@@ -163,8 +166,8 @@ class LabelSet(object):
     def rename(self, old, new):
         self.parent.imap.rename(old, new)
         if self.labels is None: self.all()
-        if label in self.labels: self.labels.remove(label)
-        self.labels.append(label)
+        if old in self.labels: self.labels.remove(label)
+        self.labels.append(new)
 
     def all(self):
         _, ret = self.parent.imap.list()
@@ -194,6 +197,8 @@ class Message(object):
         if self.imap is None or self.id == -1:
             raise Exception('Message has id/IMAP connection')
 
+        # to get uid: self.imap.fetch(self.id, 'UID')
+        # to get flags: self.imap.fetch(self.id, 'FLAGS')
         status, data = self.imap.fetch(self.id, '(RFC822)')
         if data[0] is None: return None
 
@@ -246,11 +251,19 @@ class Message(object):
         self._body = body
         self.message.set_payload(body)
 
-    def mark_read(self):
-        self.parent.imap.store(self.id, '+FLAGS', '\\Seen')
+    def flag(self, flag): self.imap.store(self.id, '+FLAGS', flag)
+    def unflag(self, flag): self.imap.store(self.id, '-FLAGS', flag)
 
-    def mark_unread(self):
-        self.parent.imap.store(self.id, '-FLAGS', '\\Seen')
+    def mark_read(self): self.flag('\\Seen')
+    def mark_unread(self): self.unflag('\\Seen')
+    def delete(self): self.flag('\\Deleted')
 
-    def delete(self):
-        self.parent.imap.store(self.id, '+FLAGS', '\\Deleted')
+    def add_label(self, label):
+        if not self.parent.labels.exists(label):
+            self.parent.labels.create(label)
+        self.imap.copy(self.id, label)
+
+    # Might add remove_label and move_to functions
+    # Have to look into imap.uid()
+
+
