@@ -262,9 +262,15 @@ class Message(object):
     def flag(self, flag): self.imap.store(self.id, '+FLAGS', flag)
     def unflag(self, flag): self.imap.store(self.id, '-FLAGS', flag)
 
-    def mark_read(self): self.flag('\\Seen')
-    def mark_unread(self): self.unflag('\\Seen')
+    def read(self): self.flag('\\Seen')
+    def unread(self): self.unflag('\\Seen')
+
+    def star(self): self.flag('[Gmail]/Starred')
+    def unstar(self): self.unflag('[Gmail]/Starred')
+
     def delete(self): self.flag('\\Deleted')
+    def archive(self): self.move_to('[Gmail]/All Mail')
+    def spam(self): self.move_to('[Gmail]/Spam')
 
     def add_label(self, label):
         if not self.parent.labels.exists(label):
