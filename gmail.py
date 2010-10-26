@@ -6,6 +6,7 @@
 import imaplib
 import smtplib
 import email
+import datetime
 
 class Gmail(object):
     # Configuration specific to Gmail
@@ -105,16 +106,26 @@ class Search(object):
     def cc(self, query):      return self._execute('CC', '"%s"' % query)
     def body(self, query):    return self._execute('BODY', '"%s"' % query)
 
-    def label(self, query):   return self._execute('LABEL', '"%s"' % query)
-
+    # Right now assume date is a string in the right format, or a Date object
     def since(self, date):
-        pass    # 'SINCE', '"date"'
+        if type(date) != str and type(date) != datetime.date:
+            raise TypeError('date must be string or datetime.date')
+        if type(date) == datetime.date: date = date.strftime("%d-%b-%Y")
+        return self._execute('SINCE', '"%s"' % date)
 
     def before(self, date):
-        pass    # 'BEFORE', '"date"'
+        if type(date) != str and type(date) != datetime.date:
+            raise TypeError('date must be string or datetime.date')
+        if type(date) == datetime.date: date = date.strftime("%d-%b-%Y")
+        return self._execute('BEFORE', '"%s"' % date)
 
     def on(self, date):
-        pass    # 'ON', '"date"'
+        if type(date) != str and type(date) != datetime.date:
+            raise TypeError('date must be string or datetime.date')
+        if type(date) == datetime.date: date = date.strftime("%d-%b-%Y")
+        return self._execute('ON', '"%s"' % date)
+
+    def label(self, query):   return self._execute('LABEL', '"%s"' % query)
 
 class LabelSet(object):
     def __init__(self, parent):
