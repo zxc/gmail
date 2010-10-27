@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-eqiv='content-type' content='text/html;charset=utf-8'>
+    <title>gmail.py</title>
+    <link rel=stylesheet href="http://jashkenas.github.com/docco/resources/docco.css">
+</head>
+<body>
+<div id=container>
+    <div id=background></div>
+    <table cellspacing=0 cellpadding=0>
+    <thead>
+      <tr>
+        <th class=docs><h1>gmail.py</h1></th>
+        <th class=code></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr><td class='docs'><p><strong>gmail.py</strong> is a Python library for interacting with Gmail.  It wraps the
+very barebones imaplib to make searching and interacting with your email
+simpler.</p>
+
+<p>gmail.py allows you to search and download email, manage labels, send email,
+and more.</p>
+
+</td><td class=code><div class=highlight><pre>
+
+import imaplib
+import smtplib
+import email
+import datetime
+
+</pre></div></td></tr><tr><td class=docs>
+
+<h2>The Gmail Object</h2>
+
+</td><td class=code><div class=highlight><pre>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>This is the central hub of the library.  Create one instance for each 
+connection you need to Gmail.  The constructor takes a username and 
+password; you can omit the '@gmail.com' portion if you want.</p>
+
+</td><td class=code><div class=highlight><pre>
+class Gmail<span class="o">(</span>object<span class="o">)</span>:
+    
+    <span class="nv">IMAP_HOST</span> <span class="o">=</span> <span class="s1">&#39;imap.gmail.com&#39;</span>
+    <span class="nv">IMAP_PORT</span> <span class="o">=</span> 993
+
+    <span class="nv">SMTP_HOST</span> <span class="o">=</span> <span class="s1">&#39;smtp.gmail.com&#39;</span>
+    <span class="nv">SMTP_PORT</span> <span class="o">=</span> 587
+
+    def __init__<span class="o">(</span>self, username, password<span class="o">)</span>:
+        <span class="k">if</span> <span class="s1">&#39;@&#39;</span> not in username: username +<span class="o">=</span> <span class="s1">&#39;@gmail.com&#39;</span>
+        self.username <span class="o">=</span> username
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Create the IMAP connection for interacting with Gmail</p>
+
+</td><td class=code><div class=highlight><pre>
+        self.imap <span class="o">=</span> imaplib.IMAP4_SSL<span class="o">(</span><span class="nv">host</span><span class="o">=</span>self.IMAP_HOST, <span class="nv">port</span><span class="o">=</span>self.IMAP_PORT<span class="o">)</span>
+        self.imap.login<span class="o">(</span><span class="nv">user</span><span class="o">=</span>username, <span class="nv">password</span><span class="o">=</span>password<span class="o">)</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Create the SMTP connection for sending mail</p>
+
+</td><td class=code><div class=highlight><pre>
+        self.smtp <span class="o">=</span> smtplib.SMTP<span class="o">(</span><span class="nv">host</span><span class="o">=</span>self.SMTP_HOST, <span class="nv">port</span><span class="o">=</span>self.SMTP_PORT<span class="o">)</span>
+        self.smtp.helo<span class="o">()</span>
+        self.smtp.starttls<span class="o">()</span>
+        self.smtp.login<span class="o">(</span><span class="nv">user</span><span class="o">=</span>username, <span class="nv">password</span><span class="o">=</span>password<span class="o">)</span>
+
+        self.search <span class="o">=</span> Search<span class="o">(</span>self<span class="o">)</span>
+        self.labels <span class="o">=</span> LabelSet<span class="o">(</span>self<span class="o">)</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Close connections to Gmail</p>
+
+</td><td class=code><div class=highlight><pre>
+    def <span class="nb">logout</span><span class="o">(</span>self, <span class="nv">close_imap</span><span class="o">=</span>True, <span class="nv">close_smtp</span><span class="o">=</span>True<span class="o">)</span>:
+        <span class="k">if </span>close_imap:
+            self.imap.close<span class="o">()</span>
+            self.imap.logout<span class="o">()</span>
+            self.imap <span class="o">=</span> None
+        <span class="k">if </span>close_smtp:
+            self.smtp.quit<span class="o">()</span>
+            self.smtp <span class="o">=</span> None
+
+    def fetch<span class="o">(</span>self, id<span class="o">)</span>:
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>id<span class="o">)</span> <span class="o">==</span> int: <span class="nv">id</span> <span class="o">=</span> str<span class="o">(</span>id<span class="o">)</span>
+        <span class="k">return </span>Message<span class="o">(</span>self, <span class="nv">imap</span><span class="o">=</span>self.imap, <span class="nv">id</span><span class="o">=</span>id<span class="o">)</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Send a gmail.Message object
+If no from address is specified, your Gmail username is used</p>
+
+</td><td class=code><div class=highlight><pre>
+    def send<span class="o">(</span>self, message<span class="o">)</span>:
+        <span class="k">if </span>self.smtp is None:     raise Exception<span class="o">(</span><span class="s1">&#39;No SMTP connection&#39;</span><span class="o">)</span>
+        <span class="k">if </span>len<span class="o">(</span>message._to<span class="o">)</span> <span class="o">==</span> 0: raise Exception<span class="o">(</span><span class="s1">&#39;To address required&#39;</span><span class="o">)</span>
+
+        <span class="k">if </span>message.from_address<span class="o">()</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span>:
+            message.from_address<span class="o">(</span>self.username<span class="o">)</span>
+
+        self.smtp.sendmail<span class="o">(</span><span class="nv">from_addr</span> <span class="o">=</span> message.from_address<span class="o">()</span>,
+                           <span class="nv">to_addrs</span>  <span class="o">=</span> message.to_address<span class="o">()</span>,
+                           <span class="nv">msg</span>       <span class="o">=</span> message.message.as_string<span class="o">())</span>
+
+class Search<span class="o">(</span>object<span class="o">)</span>:
+    def __init__<span class="o">(</span>self, parent<span class="o">)</span>:
+        self.parent <span class="o">=</span> parent
+        self.messages <span class="o">=</span> <span class="o">[]</span>
+        self.ids <span class="o">=</span> <span class="o">[]</span>
+        self.modified <span class="o">=</span> False
+
+    def clear<span class="o">(</span>self<span class="o">)</span>:
+        self.messages <span class="o">=</span> <span class="o">[]</span>
+        self.ids <span class="o">=</span> <span class="o">[]</span>
+        self.modified <span class="o">=</span> False
+
+    def _execute<span class="o">(</span>self, *args<span class="o">)</span>:
+        status, <span class="nv">ids</span> <span class="o">=</span> self.parent.imap.search<span class="o">(</span>None, *args<span class="o">)</span>
+        <span class="k">for </span>id in ids<span class="o">[</span>0<span class="o">]</span>.split<span class="o">()</span>:
+            <span class="k">if </span>id in self.ids: <span class="k">continue</span>
+<span class="k">            </span>self.messages.append<span class="o">(</span>Message<span class="o">(</span>self.parent, <span class="nv">imap</span><span class="o">=</span>self.parent.imap, <span class="nv">id</span><span class="o">=</span>id<span class="o">))</span>
+            self.ids.append<span class="o">(</span>id<span class="o">)</span>
+        self.modified <span class="o">=</span> True
+        <span class="k">return </span>self
+
+    def first<span class="o">(</span>self<span class="o">)</span>:
+        <span class="k">if </span>not self.modified: raise Exception<span class="o">(</span><span class="s1">&#39;No searches performed yet&#39;</span><span class="o">)</span>
+        <span class="k">if </span>len<span class="o">(</span>self.messages<span class="o">)</span> <span class="o">==</span> 0: <span class="k">return </span>None
+        <span class="k">return </span>self.messages<span class="o">[</span>0<span class="o">]</span>
+
+    def all<span class="o">(</span>self<span class="o">)</span>:
+        <span class="k">if </span>not self.modified: self._execute<span class="o">(</span><span class="s1">&#39;ALL&#39;</span><span class="o">)</span>
+        <span class="k">return </span>self.messages
+
+    def count<span class="o">(</span>self<span class="o">)</span>:
+        <span class="k">return </span>len<span class="o">(</span>self.messages<span class="o">)</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Clean these up, maybe with <strong>getattr</strong></p>
+
+</td><td class=code><div class=highlight><pre>
+    def unread<span class="o">(</span>self<span class="o">)</span>:         <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;UNSEEN&#39;</span><span class="o">)</span>
+    def <span class="nb">read</span><span class="o">(</span>self<span class="o">)</span>:           <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;SEEN&#39;</span><span class="o">)</span>
+    def to<span class="o">(</span>self, query<span class="o">)</span>:      <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;TO&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+    def from_<span class="o">(</span>self, query<span class="o">)</span>:   <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;FROM&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+    def subject<span class="o">(</span>self, query<span class="o">)</span>: <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;SUBJECT&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+    def bcc<span class="o">(</span>self, query<span class="o">)</span>:     <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;BCC&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+    def cc<span class="o">(</span>self, query<span class="o">)</span>:      <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;CC&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+    def body<span class="o">(</span>self, query<span class="o">)</span>:    <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;BODY&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Right now assume date is a string in the right format, or a Date object</p>
+
+</td><td class=code><div class=highlight><pre>
+    def since<span class="o">(</span>self, date<span class="o">)</span>:
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> !<span class="o">=</span> str and <span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> !<span class="o">=</span> datetime.date:
+            raise TypeError<span class="o">(</span><span class="s1">&#39;date must be string or datetime.date&#39;</span><span class="o">)</span>
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> <span class="o">==</span> datetime.date: <span class="nv">date</span> <span class="o">=</span> date.strftime<span class="o">(</span><span class="s2">&quot;%d-%b-%Y&quot;</span><span class="o">)</span>
+        <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;SINCE&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % date<span class="o">)</span>
+
+    def before<span class="o">(</span>self, date<span class="o">)</span>:
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> !<span class="o">=</span> str and <span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> !<span class="o">=</span> datetime.date:
+            raise TypeError<span class="o">(</span><span class="s1">&#39;date must be string or datetime.date&#39;</span><span class="o">)</span>
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> <span class="o">==</span> datetime.date: <span class="nv">date</span> <span class="o">=</span> date.strftime<span class="o">(</span><span class="s2">&quot;%d-%b-%Y&quot;</span><span class="o">)</span>
+        <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;BEFORE&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % date<span class="o">)</span>
+
+    def on<span class="o">(</span>self, date<span class="o">)</span>:
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> !<span class="o">=</span> str and <span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> !<span class="o">=</span> datetime.date:
+            raise TypeError<span class="o">(</span><span class="s1">&#39;date must be string or datetime.date&#39;</span><span class="o">)</span>
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>date<span class="o">)</span> <span class="o">==</span> datetime.date: <span class="nv">date</span> <span class="o">=</span> date.strftime<span class="o">(</span><span class="s2">&quot;%d-%b-%Y&quot;</span><span class="o">)</span>
+        <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;ON&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % date<span class="o">)</span>
+
+    def label<span class="o">(</span>self, query<span class="o">)</span>:   <span class="k">return </span>self._execute<span class="o">(</span><span class="s1">&#39;LABEL&#39;</span>, <span class="s1">&#39;&quot;%s&quot;&#39;</span> % query<span class="o">)</span>
+
+class LabelSet<span class="o">(</span>object<span class="o">)</span>:
+    def __init__<span class="o">(</span>self, parent<span class="o">)</span>:
+        self.parent <span class="o">=</span> parent
+        self.labels <span class="o">=</span> None
+        self.current <span class="o">=</span> <span class="s1">&#39;INBOX&#39;</span>
+        self.count <span class="o">=</span> None
+        self.switch<span class="o">(</span><span class="s1">&#39;INBOX&#39;</span><span class="o">)</span>
+
+    def exists<span class="o">(</span>self, label<span class="o">)</span>:
+        <span class="k">if </span>self.labels is None: self.all<span class="o">()</span>
+        <span class="k">return </span>label in self.labels
+
+    def switch<span class="o">(</span>self, label, <span class="nv">shortcuts_on</span><span class="o">=</span>True<span class="o">)</span>:
+        <span class="nv">shortcuts</span> <span class="o">=</span> <span class="o">{</span> <span class="s1">&#39;all&#39;</span>:       <span class="s1">&#39;[Gmail]/All Mail&#39;</span>
+                    , <span class="s1">&#39;drafts&#39;</span>:    <span class="s1">&#39;[Gmail]/Drafts&#39;</span>
+                    , <span class="s1">&#39;important&#39;</span>: <span class="s1">&#39;[Gmail]/Important&#39;</span>
+                    , <span class="s1">&#39;sent&#39;</span>:      <span class="s1">&#39;[Gmail]/Sent Mail&#39;</span>
+                    , <span class="s1">&#39;spam&#39;</span>:      <span class="s1">&#39;[Gmail]/Spam&#39;</span>
+                    , <span class="s1">&#39;starred&#39;</span>:   <span class="s1">&#39;[Gmail]/Starred&#39;</span>
+                    , <span class="s1">&#39;trash&#39;</span>:     <span class="s1">&#39;[Gmail]/Trash&#39;</span>
+                    <span class="o">}</span>
+        <span class="k">if </span>shortcuts_on and label.lower<span class="o">()</span> in shortcuts:
+            <span class="nv">label</span> <span class="o">=</span> shortcuts<span class="o">[</span>label.lower<span class="o">()]</span>
+
+        <span class="nv">ret</span> <span class="o">=</span> self.parent.imap.select<span class="o">(</span>label<span class="o">)</span>
+        self.current <span class="o">=</span> label
+
+        self.parent.search.clear<span class="o">()</span>
+
+        try:
+            self.count <span class="o">=</span> int<span class="o">(</span>ret<span class="o">[</span>1<span class="o">][</span>0<span class="o">])</span>
+            <span class="k">return </span>self.count
+        except: <span class="k">return </span>None
+
+    def create<span class="o">(</span>self, label<span class="o">)</span>:
+        self.parent.imap.create<span class="o">(</span>label<span class="o">)</span>
+        <span class="k">if </span>self.labels is None: self.all<span class="o">()</span>
+        self.labels.append<span class="o">(</span>label<span class="o">)</span>
+
+    def delete<span class="o">(</span>self, label<span class="o">)</span>:
+        self.parent.imap.delete<span class="o">(</span>label<span class="o">)</span>
+        <span class="k">if </span>self.labels is None: self.all<span class="o">()</span>
+        <span class="k">if </span>label in self.labels: self.labels.remove<span class="o">(</span>label<span class="o">)</span>
+
+    def rename<span class="o">(</span>self, old, new<span class="o">)</span>:
+        self.parent.imap.rename<span class="o">(</span>old, new<span class="o">)</span>
+        <span class="k">if </span>self.labels is None: self.all<span class="o">()</span>
+        <span class="k">if </span>old in self.labels: self.labels.remove<span class="o">(</span>label<span class="o">)</span>
+        self.labels.append<span class="o">(</span>new<span class="o">)</span>
+
+    def all<span class="o">(</span>self<span class="o">)</span>:
+        _, <span class="nv">ret</span> <span class="o">=</span> self.parent.imap.list<span class="o">()</span>
+</pre></div></td></tr><tr><td class=docs>
+
+<p>ret is a list of results in the form of:
+'(\HasNoChildren) "/" "[Gmail]/All Mail"'</p>
+
+</td><td class=code><div class=highlight><pre>
+        self.labels <span class="o">=</span> <span class="o">[</span>a.split<span class="o">(</span><span class="s1">&#39;&quot;&#39;</span><span class="o">)[</span>-2<span class="o">]</span> <span class="k">for </span>a in ret<span class="o">]</span>
+        <span class="k">return </span>self.labels
+
+class Message<span class="o">(</span>object<span class="o">)</span>:
+    def __init__<span class="o">(</span>self, <span class="nv">parent</span><span class="o">=</span>None, <span class="nv">imap</span><span class="o">=</span>None, <span class="nv">id</span><span class="o">=</span>-1<span class="o">)</span>:
+        self.parent <span class="o">=</span> parent
+        self.imap <span class="o">=</span> imap
+        self.id <span class="o">=</span> id
+        self._has_content <span class="o">=</span> False
+
+    def fill<span class="o">(</span>self, <span class="nv">to_addresses</span><span class="o">=</span><span class="s1">&#39;&#39;</span>, <span class="nv">from_address</span><span class="o">=</span><span class="s1">&#39;&#39;</span>, <span class="nv">subject</span><span class="o">=</span><span class="s1">&#39;&#39;</span>, <span class="nv">body</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="o">)</span>:
+        self.message <span class="o">=</span> email.message.Message<span class="o">()</span>
+        self.body<span class="o">(</span>body<span class="o">)</span>
+        self.subject<span class="o">(</span>subject<span class="o">)</span>
+        self.from_address<span class="o">(</span>from_address<span class="o">)</span>
+        self.to_address<span class="o">(</span>to_addresses<span class="o">)</span>
+        self._has_content <span class="o">=</span> True
+        <span class="k">return </span>self
+
+    def fetch<span class="o">(</span>self<span class="o">)</span>:
+        <span class="k">if </span>self._has_content: <span class="k">return </span>self
+        <span class="k">if </span>self.imap is None or self.id <span class="o">==</span> -1:
+            raise Exception<span class="o">(</span><span class="s1">&#39;Message has id/IMAP connection&#39;</span><span class="o">)</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>to get uid: self.imap.fetch(self.id, 'UID')
+to get flags: self.imap.fetch(self.id, 'FLAGS')</p>
+
+</td><td class=code><div class=highlight><pre>
+        status, <span class="nv">data</span> <span class="o">=</span> self.imap.fetch<span class="o">(</span>self.id, <span class="s1">&#39;(RFC822)&#39;</span><span class="o">)</span>
+        <span class="k">if </span>data<span class="o">[</span>0<span class="o">]</span> is None: <span class="k">return </span>None
+
+        self.message <span class="o">=</span> email.message_from_string<span class="o">(</span>data<span class="o">[</span>0<span class="o">][</span>1<span class="o">])</span>
+
+        self.to_address<span class="o">(</span>self.message<span class="o">[</span><span class="s1">&#39;Delivered-To&#39;</span><span class="o">]</span> or self.message<span class="o">[</span><span class="s1">&#39;To&#39;</span><span class="o">]</span> or <span class="s1">&#39;&#39;</span><span class="o">)</span>
+        self.from_address<span class="o">(</span>self.message<span class="o">[</span><span class="s1">&#39;From&#39;</span><span class="o">]</span> or <span class="s1">&#39;&#39;</span><span class="o">)</span>
+        self.body<span class="o">(</span>self.message.get_payload<span class="o">()</span> or <span class="s1">&#39;&#39;</span><span class="o">)</span>
+        self.subject<span class="o">(</span>self.message<span class="o">[</span><span class="s1">&#39;Subject&#39;</span><span class="o">]</span> or <span class="s1">&#39;&#39;</span><span class="o">)</span>
+
+        self._has_content <span class="o">=</span> True
+        <span class="k">return </span>self
+
+    def from_address<span class="o">(</span>self, <span class="nv">addr</span><span class="o">=</span>None<span class="o">)</span>:
+        <span class="k">if </span>addr is None: 
+            <span class="k">if </span>self._has_content: <span class="k">return </span>self._from
+            <span class="k">else</span>: <span class="k">return </span>self.fetch<span class="o">()</span>.from_address<span class="o">()</span>
+
+        self._from <span class="o">=</span> addr
+        del self.message<span class="o">[</span><span class="s1">&#39;From&#39;</span><span class="o">]</span>
+        self.message<span class="o">[</span><span class="s1">&#39;From&#39;</span><span class="o">]</span> <span class="o">=</span> addr
+
+    def to_address<span class="o">(</span>self, <span class="nv">addr</span><span class="o">=</span>None<span class="o">)</span>:
+        <span class="k">if </span>addr is None: 
+            <span class="k">if </span>self._has_content: <span class="k">return </span>self._to
+            <span class="k">else</span>: <span class="k">return </span>self.fetch<span class="o">()</span>.to_address<span class="o">()</span>
+
+        del self.message<span class="o">[</span><span class="s1">&#39;To&#39;</span><span class="o">]</span>
+        <span class="k">if </span><span class="nb">type</span><span class="o">(</span>addr<span class="o">)</span> <span class="o">==</span> <span class="nb">type</span><span class="o">([])</span>:
+            self._to <span class="o">=</span> addr
+            self.message<span class="o">[</span><span class="s1">&#39;To&#39;</span><span class="o">]</span> <span class="o">=</span> addr.join<span class="o">(</span><span class="s1">&#39;, &#39;</span><span class="o">)</span>
+        <span class="k">else</span>:
+            self._to <span class="o">=</span> <span class="o">[</span>s.strip<span class="o">()</span> <span class="k">for </span>s in addr.split<span class="o">(</span><span class="s1">&#39;, &#39;</span><span class="o">)]</span>
+            self.message<span class="o">[</span><span class="s1">&#39;To&#39;</span><span class="o">]</span> <span class="o">=</span> addr
+    
+    def subject<span class="o">(</span>self, <span class="nv">subj</span><span class="o">=</span>None<span class="o">)</span>:
+        <span class="k">if </span>subj is None: 
+            <span class="k">if </span>self._has_content: <span class="k">return </span>self._subject
+            <span class="k">else</span>: <span class="k">return </span>self.fetch<span class="o">()</span>.subject<span class="o">()</span>
+
+        self._subject <span class="o">=</span> subj
+        del self.message<span class="o">[</span><span class="s1">&#39;Subject&#39;</span><span class="o">]</span>
+        self.message<span class="o">[</span><span class="s1">&#39;Subject&#39;</span><span class="o">]</span> <span class="o">=</span> subj
+
+    def body<span class="o">(</span>self, <span class="nv">body</span><span class="o">=</span>None<span class="o">)</span>:
+        <span class="k">if </span>body is None: 
+            <span class="k">if </span>self._has_content: <span class="k">return </span>self._body
+            <span class="k">else</span>: <span class="k">return </span>self.fetch<span class="o">()</span>.body<span class="o">()</span>
+
+        self._body <span class="o">=</span> body
+        self.message.set_payload<span class="o">(</span>body<span class="o">)</span>
+
+    def flag<span class="o">(</span>self, flag<span class="o">)</span>: self.imap.store<span class="o">(</span>self.id, <span class="s1">&#39;+FLAGS&#39;</span>, flag<span class="o">)</span>
+    def unflag<span class="o">(</span>self, flag<span class="o">)</span>: self.imap.store<span class="o">(</span>self.id, <span class="s1">&#39;-FLAGS&#39;</span>, flag<span class="o">)</span>
+
+    def <span class="nb">read</span><span class="o">(</span>self<span class="o">)</span>: self.flag<span class="o">(</span><span class="s1">&#39;\\Seen&#39;</span><span class="o">)</span>
+    def unread<span class="o">(</span>self<span class="o">)</span>: self.unflag<span class="o">(</span><span class="s1">&#39;\\Seen&#39;</span><span class="o">)</span>
+
+    def star<span class="o">(</span>self<span class="o">)</span>: self.add_label<span class="o">(</span><span class="s1">&#39;[Gmail]/Starred&#39;</span><span class="o">)</span>
+    def unstar<span class="o">(</span>self<span class="o">)</span>: self.unflag<span class="o">(</span><span class="s1">&#39;\\Flagged&#39;</span><span class="o">)</span>
+
+    def delete<span class="o">(</span>self<span class="o">)</span>: self.flag<span class="o">(</span><span class="s1">&#39;\\Deleted&#39;</span><span class="o">)</span>
+    def archive<span class="o">(</span>self<span class="o">)</span>: self.move_to<span class="o">(</span><span class="s1">&#39;[Gmail]/All Mail&#39;</span><span class="o">)</span>
+    def spam<span class="o">(</span>self<span class="o">)</span>: self.move_to<span class="o">(</span><span class="s1">&#39;[Gmail]/Spam&#39;</span><span class="o">)</span>
+
+    def add_label<span class="o">(</span>self, label<span class="o">)</span>:
+        <span class="k">if </span>not self.parent.labels.exists<span class="o">(</span>label<span class="o">)</span>:
+            self.parent.labels.create<span class="o">(</span>label<span class="o">)</span>
+        self.imap.copy<span class="o">(</span>self.id, label<span class="o">)</span>
+
+    def move_to<span class="o">(</span>self, label<span class="o">)</span>:
+        self.add_label<span class="o">(</span>label<span class="o">)</span>
+        self.delete<span class="o">()</span>
+
+</pre></div></td></tr><tr><td class=docs>
+
+<p>Might add remove_label function
+Have to look into imap.uid()</p>
+
+</td><td class=code><div class=highlight><pre>
+
+
+
+
+</td><td class=code><div class=highlight><pre>
+</pre></div></td></tr><tr><td class=docs>
+
+</pre></div></td></tr><tr><td class=docs>
+</td><td class=code><div class=highlight><pre>
+
+</pre></div></td></tr><tr><td class=docs></td><td class='code'></td></tr>
+    </tbody>
+    </table>
+</div>
+</body>
+</html>

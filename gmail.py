@@ -1,6 +1,10 @@
 #
-# gmail.py - interact with Gmail through Python
-# ---------------------------------------------
+# **gmail.py** is a Python library for interacting with Gmail.  It wraps the
+# very barebones imaplib to make searching and interacting with your email
+# simpler.
+# 
+# gmail.py allows you to search and download email, manage labels, send email,
+# and more.
 #
 
 import imaplib
@@ -8,17 +12,20 @@ import smtplib
 import email
 import datetime
 
+# The Gmail Object
+# ----------------
+
+# This is the central hub of the library.  Create one instance for each 
+# connection you need to Gmail.  The constructor takes a username and 
+# password; you can omit the '@gmail.com' portion if you want.
 class Gmail(object):
-    # Configuration specific to Gmail
+    
     IMAP_HOST = 'imap.gmail.com'
     IMAP_PORT = 993
 
     SMTP_HOST = 'smtp.gmail.com'
     SMTP_PORT = 587
 
-    # Create a Gmail instance to login.
-    # username is your gmail address, '@gmail.com' optional.
-    # password is your password.
     def __init__(self, username, password):
         if '@' not in username: username += '@gmail.com'
         self.username = username
